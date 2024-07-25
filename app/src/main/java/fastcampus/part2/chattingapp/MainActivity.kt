@@ -11,6 +11,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import fastcampus.part2.chattingapp.chatlist.ChatListFragment
 import fastcampus.part2.chattingapp.databinding.ActivityMainBinding
+import fastcampus.part2.chattingapp.mypage.MyPageFragment
 import fastcampus.part2.chattingapp.userlist.UserFragment
 
 class MainActivity : AppCompatActivity() {
@@ -18,6 +19,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val userFragment = UserFragment()
     private val chatListFragment = ChatListFragment()
+    private val myPageFragment = MyPageFragment()
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +48,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 R.id.myPage -> {
+                    replaceFragment(myPageFragment)
                     return@setOnItemSelectedListener true
                 }
 
