@@ -9,6 +9,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import fastcampus.part2.chattingapp.chatlist.ChatListFragment
 import fastcampus.part2.chattingapp.databinding.ActivityMainBinding
 import fastcampus.part2.chattingapp.userlist.UserFragment
 
@@ -16,6 +17,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val userFragment = UserFragment()
+    private val chatListFragment = ChatListFragment()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,33 +27,37 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val currentUser = Firebase.auth.currentUser
-        if(currentUser == null){
+        if (currentUser == null) {
             //로그인이 안되어있음
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
         }
 
         binding.bottomNavigationView.setOnItemSelectedListener {
-            when(it.itemId){
-                R.id.userList ->{
+            when (it.itemId) {
+                R.id.userList -> {
                     replaceFragment(userFragment)
                     return@setOnItemSelectedListener true
                 }
-                R.id.chatroomList->{
+
+                R.id.chatroomList -> {
+                    replaceFragment(chatListFragment)
                     return@setOnItemSelectedListener true
                 }
+
                 R.id.myPage -> {
                     return@setOnItemSelectedListener true
                 }
+
                 else -> {
                     return@setOnItemSelectedListener false
                 }
             }
         }
-
+        replaceFragment(userFragment)
     }
 
-    private fun replaceFragment(fragment: Fragment){
+    private fun replaceFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
             .apply {
                 replace(R.id.frameLayout, fragment)
