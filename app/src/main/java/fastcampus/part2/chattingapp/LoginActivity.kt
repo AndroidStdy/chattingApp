@@ -7,9 +7,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.database.database
+import fastcampus.part2.chattingapp.Key.Companion.DB_URL
+import fastcampus.part2.chattingapp.Key.Companion.DB_USERS
 import fastcampus.part2.chattingapp.databinding.ActivityLoginBinding
 
-class LoginActivity: AppCompatActivity() {
+class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
 
@@ -22,18 +25,17 @@ class LoginActivity: AppCompatActivity() {
             val email = binding.etEmail.text.toString()
             val password = binding.etPassword.text.toString()
 
-            if(email.isEmpty() || password.isEmpty()){
+            if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "이메일 또는 패스워드가 입력되지 않았습니다.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             Firebase.auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this){ task ->
-                    if(task.isSuccessful){
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
                         //회원가입 성공
                         Toast.makeText(this, "회원가입에 성공했습니다..", Toast.LENGTH_SHORT).show()
-                    }
-                    else{
+                    } else {
                         //회원가입 실패
                         Toast.makeText(this, "회원가입에 실패했습니다.", Toast.LENGTH_SHORT).show()
                     }
@@ -44,19 +46,29 @@ class LoginActivity: AppCompatActivity() {
             val email = binding.etEmail.text.toString()
             val password = binding.etPassword.text.toString()
 
-            if(email.isEmpty() || password.isEmpty()){
+            if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "이메일 또는 패스워드가 입력되지 않았습니다.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            Firebase.auth.signInWithEmailAndPassword(email,password)
+            Firebase.auth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener { task ->
-                    if(task.isSuccessful){
+                    val currentUser = Firebase.auth.currentUser
+                    if (task.isSuccessful && currentUser != null) {
+                        val userId = currentUser.uid
+
+                        val user = mutableMapOf<String, Any>()
+                        user["userId"] = userId
+                        user["username"] = email
+
+
+
+                        Firebase.database(DB_URL).reference.child(DB_USERS).child(userId).updateChildren(user)
+
                         //로그인 성공
                         val intent = Intent(this, MainActivity::class.java)
                         startActivity(intent)
                         finish()
-                    }
-                    else{
+                    } else {
                         //로그인 실패
                         Log.e("LoginActivity", task.exception.toString())
                         Toast.makeText(this, "로그인에 실패했습니다.", Toast.LENGTH_SHORT).show()
