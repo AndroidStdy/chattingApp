@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.database.database
+import com.google.firebase.messaging.messaging
 import fastcampus.part2.chattingapp.Key.Companion.DB_URL
 import fastcampus.part2.chattingapp.Key.Companion.DB_USERS
 import fastcampus.part2.chattingapp.databinding.ActivityLoginBinding
@@ -56,18 +57,25 @@ class LoginActivity : AppCompatActivity() {
                     if (task.isSuccessful && currentUser != null) {
                         val userId = currentUser.uid
 
-                        val user = mutableMapOf<String, Any>()
-                        user["userId"] = userId
-                        user["username"] = email
+                        Firebase.messaging.token.addOnCompleteListener {
+                            val token = it.result
+
+                            val user = mutableMapOf<String, Any>()
+                            user["userId"] = userId
+                            user["username"] = email
+                            user["fcmToken"] = token
 
 
 
-                        Firebase.database(DB_URL).reference.child(DB_USERS).child(userId).updateChildren(user)
+                            Firebase.database(DB_URL).reference.child(DB_USERS).child(userId)
+                                .updateChildren(user)
 
-                        //로그인 성공
-                        val intent = Intent(this, MainActivity::class.java)
-                        startActivity(intent)
-                        finish()
+                            //로그인 성공
+                            val intent = Intent(this, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+
+                        }
                     } else {
                         //로그인 실패
                         Log.e("LoginActivity", task.exception.toString())
