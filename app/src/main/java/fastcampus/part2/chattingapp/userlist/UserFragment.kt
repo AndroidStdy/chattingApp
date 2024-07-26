@@ -56,6 +56,7 @@ class UserFragment : Fragment(R.layout.fragment_userlist) {
 
                 startActivity(intent)
             }
+
         }
         binding.userListRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)

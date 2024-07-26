@@ -1,5 +1,6 @@
 package fastcampus.part2.chattingapp.chatlist
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
@@ -12,6 +13,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
 import fastcampus.part2.chattingapp.Key
 import fastcampus.part2.chattingapp.R
+import fastcampus.part2.chattingapp.chatdetail.ChatActivity
 import fastcampus.part2.chattingapp.databinding.FragmentChatlistBinding
 
 class ChatListFragment : Fragment(R.layout.fragment_chatlist) {
@@ -21,7 +23,14 @@ class ChatListFragment : Fragment(R.layout.fragment_chatlist) {
         super.onViewCreated(view, savedInstanceState)
         binding = FragmentChatlistBinding.bind(view)
 
-        val chatListAdapter = ChatListAdapter()
+        val chatListAdapter = ChatListAdapter{chatRoomItem ->
+            chatRoomItem.otherUserID
+            val intent = Intent(context, ChatActivity::class.java)
+            intent.putExtra(ChatActivity.EXTRA_OTHER_USER_ID,chatRoomItem.otherUserID)
+            intent.putExtra(ChatActivity.EXTRA_CHAT_ROOM_ID,chatRoomItem.chatRoomId)
+
+            startActivity(intent)
+        }
         binding.chatListRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = chatListAdapter
