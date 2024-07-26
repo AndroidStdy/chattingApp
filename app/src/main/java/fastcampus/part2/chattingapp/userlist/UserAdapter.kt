@@ -7,12 +7,16 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import fastcampus.part2.chattingapp.databinding.ItemUserBinding
 
-class UserAdapter: ListAdapter<UserItem, UserAdapter.ViewHolder>(differ) {
+class UserAdapter(private val onClick: (UserItem) -> Unit): ListAdapter<UserItem, UserAdapter.ViewHolder>(differ) {
 
     inner class ViewHolder(private val binding: ItemUserBinding): RecyclerView.ViewHolder(binding.root){
         fun bind(item:UserItem){
             binding.tvNickname.text = item.username
             binding.tvDescription.text = item.description
+
+            binding.root.setOnClickListener {
+                onClick(item)
+            }
         }
     }
 
