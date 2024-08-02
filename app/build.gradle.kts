@@ -40,6 +40,7 @@ android {
     packaging{
         resources{
             excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/INDEX.LIST"
         }
 
     }
@@ -61,5 +62,5 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation ("com.google.auth:google-auth-library-oauth2-http:0.24.0")
+    implementation ("com.google.auth:google-auth-library-oauth2-http:1.24.0")
 }
