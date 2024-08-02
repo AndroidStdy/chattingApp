@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage("알림 권한이 없으면 알림을 받을 수 없습니다.")
             .setPositiveButton("권한 허용하기") { _, _ ->
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }.setNegativeButton("취소"){ dialogInterface,_ -> dialogInterface.cancel() }
+            }.setNegativeButton("취소") { dialogInterface, _ -> dialogInterface.cancel() }
             .show()
     }
 }

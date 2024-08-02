@@ -25,12 +25,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         // 알림창에 표시되는 메시지
         val body = message.notification?.body ?: ""
-        val notificationBuilder = NotificationCompat.Builder(applicationContext,getString(R.string.default_notification_channel_id) )
+        val notificationBuilder = NotificationCompat.Builder(
+            applicationContext,
+            getString(R.string.default_notification_channel_id)
+        )
             .setSmallIcon(R.drawable.baseline_chat_24)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(body)
 
-        notificationManager.notify(0,notificationBuilder.build())
+        notificationManager.notify(0, notificationBuilder.build())
     }
 
     override fun onNewToken(token: String) {

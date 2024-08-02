@@ -5,26 +5,23 @@ import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
-import com.google.firebase.database.ChildEventListener
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.MutableData
-import com.google.firebase.database.database
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 import fastcampus.part2.chattingapp.Key
 import fastcampus.part2.chattingapp.R
 import fastcampus.part2.chattingapp.databinding.ActivityChatdetailBinding
 import fastcampus.part2.chattingapp.userlist.UserItem
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
+import okhttp3.*
 import org.json.JSONObject
 import java.io.IOException
+import java.io.InputStream
+import com.google.auth.oauth2.GoogleCredentials
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class ChatActivity : AppCompatActivity() {
 
@@ -47,10 +44,10 @@ class ChatActivity : AppCompatActivity() {
 
         chatRoomId = intent.getStringExtra(EXTRA_CHAT_ROOM_ID) ?: return
         otherUserId = intent.getStringExtra(EXTRA_OTHER_USER_ID) ?: return
-        myUserId = Firebase.auth.currentUser?.uid ?: ""
+        myUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
         chatAdapter = ChatAdapter()
 
-        Firebase.database.reference.child(Key.DB_USERS).child(myUserId).get()
+        FirebaseDatabase.getInstance().reference.child(Key.DB_USERS).child(myUserId).get()
             .addOnSuccessListener {
                 val myUserItem = it.getValue(UserItem::class.java)
                 myUserName = myUserItem?.username ?: ""
@@ -58,15 +55,15 @@ class ChatActivity : AppCompatActivity() {
                 getOtherUserData()
             }
 
-
         binding.chatRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = chatAdapter
         }
+
         binding.btnSend.setOnClickListener {
             val message = binding.etMessage.text.toString()
 
-            if(!isInit){
+            if (!isInit) {
                 return@setOnClickListener
             }
 
@@ -79,13 +76,13 @@ class ChatActivity : AppCompatActivity() {
             val newChatItem = ChatItem(
                 message = message,
                 userId = myUserId,
-
-                )
+            )
             //채팅 전송
-            Firebase.database.reference.child(Key.DB_CHATS).child(chatRoomId).push().apply {
-                newChatItem.chatId = key
-                setValue(newChatItem)
-            }
+            FirebaseDatabase.getInstance().reference.child(Key.DB_CHATS).child(chatRoomId).push()
+                .apply {
+                    newChatItem.chatId = key
+                    setValue(newChatItem)
+                }
 
             val updates: MutableMap<String, Any> = hashMapOf(
                 "${Key.DB_CHAT_ROOMS}/$myUserId/$otherUserId/lastMessage" to message,
@@ -94,38 +91,74 @@ class ChatActivity : AppCompatActivity() {
                 "${Key.DB_CHAT_ROOMS}/$otherUserId/$myUserId/otherUserId" to myUserId,
                 "${Key.DB_CHAT_ROOMS}/$otherUserId/$myUserId/otherUserName" to myUserName,
             )
-            Firebase.database.reference.updateChildren(updates)
+            FirebaseDatabase.getInstance().reference.updateChildren(updates)
 
+            // FCM 메시지 보내기
+            sendFcmMessage(otherUserFcmToken, message)
+
+            binding.etMessage.text.clear()
+        }
+    }
+
+    private fun sendFcmMessage(fcmToken: String, message: String) {
+        CoroutineScope(Dispatchers.IO).launch {
             val client = OkHttpClient()
 
             val root = JSONObject()
             val notification = JSONObject()
             notification.put("title", getString(R.string.app_name))
             notification.put("body", message)
-            root.put("to", otherUserFcmToken)
+            root.put("to", fcmToken)
             root.put("priority", "high")
             root.put("notification", notification)
 
-            val requestBody = root.toString().toRequestBody("application/json; charset=utf-8".toMediaType()) //파일 형식 지정
-            val request = Request.Builder().post(requestBody).url("fcm.googleapis.com/v1/projects/chattingapp-e1548/messages:send")
-                .header("Authorization", "key=").build()
-            client.newCall(request).enqueue(object: Callback{
+            val requestBody =
+                root.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+            val accessToken = getAccessToken() // OAuth2 토큰 가져오기
+
+            if (accessToken == null) {
+                Log.e("ChatActivity", "FCM 메시지 전송 실패")
+                return@launch
+            }
+
+            val request = Request.Builder()
+                .post(requestBody)
+                .url("https://fcm.googleapis.com/v1/projects/chattingapp-e1548/messages:send")
+                .header("Authorization", "Bearer $accessToken")
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    e.stackTraceToString()
+                    e.printStackTrace()
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    Log.e("ChatActivity", response.toString())
+                    Log.d("ChatActivity", "FCM 서버 응답: ${response.code}, ${response.message}")
+                    if (response.isSuccessful) {
+                        Log.d("ChatActivity", "FCM 메시지 전송 성공")
+                    } else {
+                        Log.e("ChatActivity", "FCM 메시지 전송 실패: ${response.body?.string()}")
+                    }
                 }
-
             })
-
-            binding.etMessage.text.clear()
         }
     }
 
-    private fun getOtherUserData(){
-        Firebase.database.reference.child(Key.DB_USERS).child(otherUserId).get()
+    private suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
+        try {
+            val inputStream: InputStream = assets.open("firebase_service_key.json")
+            val googleCredentials = GoogleCredentials.fromStream(inputStream)
+                .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
+            googleCredentials.refreshIfExpired() // 만료된 액세스 토큰 자동 갱신
+            googleCredentials.accessToken.tokenValue // 유효한 액세스 토큰 가져옴
+        } catch (e: IOException) {
+            Log.e("ChatActivity", "Failed to get access token", e)
+            null
+        }
+    }
+
+    private fun getOtherUserData() {
+        FirebaseDatabase.getInstance().reference.child(Key.DB_USERS).child(otherUserId).get()
             .addOnSuccessListener {
                 val otherUserItem = it.getValue(UserItem::class.java)
                 otherUserFcmToken = otherUserItem?.fcmToken.orEmpty()
@@ -136,9 +169,9 @@ class ChatActivity : AppCompatActivity() {
             }
     }
 
-    private fun getChatData(){
+    private fun getChatData() {
         //채팅 가져오기
-        Firebase.database.reference.child(Key.DB_CHATS).child(chatRoomId)
+        FirebaseDatabase.getInstance().reference.child(Key.DB_CHATS).child(chatRoomId)
             .addChildEventListener(object : ChildEventListener {
                 override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                     val chatItem = snapshot.getValue(ChatItem::class.java)
